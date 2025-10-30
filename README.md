@@ -5,6 +5,278 @@ MS AI과정 7기
 
 # CDR 파일 유효성 검증 시스템: 설계 및 동작 설명서
 
+### 개요 (Overview)
+이 프로세스의 주된 목적은 사용자가 정의한 CDR 파일의 구조(필드명, 데이터 타입, 길이 등)를 JSON 형태로 저장하고, 이후 이 정의를 AI가 효율적으로 검색하여 실제 CDR 파일을 분석하고 유효성을 검증할 때 활용하는 것입니다. 이를 위해 **Azure Blob Storage**와 **Azure AI Search**가 사용되며, 각각 파일의 영구 저장과 검색 엔진 역할을 수행합니다.
+
+## 1. 시스템 개요
+
+### 1.1. 문제 정의
+통신 시스템에서 발생하는 CDR(Call Detail Record) 파일은 데이터 무결성과 정확성이 매우 중요합니다. 다양한 포맷과 대용량으로 인해 수동 검증은 비효율적이며 오류 발생 가능성이 높습니다. 본 프로젝트는 이 문제를 해결하기 위해 **Azure OpenAI Service, Azure AI Search, Azure Blob Storage**를 통합한 AI 기반 유효성 검증 시스템을 구축합니다. 이 시스템은 **Azure 서비스의 긴밀한 통합과 Python 기반의 정형 데이터 처리 능력(`data_parser.py`)을 활용**하여 CDR 데이터의 자동화된 포맷 식별 및 유효성 검증을 목표로 합니다.
+
+### 1.2. 주요 목표
+*   CDR 파일의 포맷을 AI(Azure OpenAI Service)가 자동으로 식별하거나 추론합니다.
+*   식별된 포맷 정의를 기반으로 CDR 데이터의 유효성을 정확히 검증합니다.
+*   **Azure 클라우드 서비스의 효과적인 통합과 `data_parser.py`를 통한 Python 로직 지원**으로 AI의 분석 정밀도를 높이고, 확장 가능하며 안정적인 데이터 처리 및 AI 기반 분석을 구현합니다.
+
+---
+
+## 2. CDR 포맷 정의 파일 등록 플로우
+
+CDR 파일 유효성 검증을 위한 포맷 정의는 AI가 CDR 파일을 식별하고 검증하는 기준이 됩니다. 이 플로우는 사용자가 새로운 포맷 정의를 시스템에 등록하는 과정을 보여줍니다.
+
+**[플로우 다이어그램 - 포맷 정의 등록]**
+```
+사용자 액션
+      │
+      V
+[단계 1] JSON 포맷 정의 파일 업로드 (Streamlit UI)
+      │
+      V
+[단계 2] app.py가 파일 내용 읽기
+      │    (파일 이름: `format_name.json`, 내용: `format_content_str`)
+      │
+      V
+[단계 3] ai_service.upload_and_index_format 호출 (담당: `ai_service.py`)
+      │
+      ├─────────────────────────► Azure Blob Storage 저장
+      │                           (담당: `azure_storage_manager.py` -> Azure Blob Storage)
+      │                           (포맷 정의 파일 원본(`format_content_str`) 영구 저장)
+      │
+      └─────────────────────────► Azure AI Search 색인
+                                  (담당: `azure_search_manager.py` -> Azure AI Search)
+                                  (JSON 파싱, Search 문서 생성, 인덱스에 업로드)
+      │
+      V
+[단계 4] 포맷 정의 등록 성공/실패 알림 (Streamlit UI)
+```
+
+
+**상세 플로우 설명:**
+
+1.  **JSON 포맷 정의 파일 업로드 (Streamlit UI)**:
+    *   사용자가 Streamlit 웹 애플리케이션의 "CDR 포맷 정의 관리" 섹션에서 `.json` 확장자를 가진 포맷 정의 파일을 선택하고 업로드합니다.
+
+2.  **`app.py`가 파일 내용 읽기**:
+    *   `app.py`는 업로드된 파일의 이름(`format_name.json`)과 내용(`format_content_str`)을 읽어들여 임시적으로 저장합니다.
+
+3.  **`ai_service.upload_and_index_format` 호출**:
+    *   사용자가 `Azure Storage 및 AI Search에 저장` 버튼을 클릭하면, `app.py`는 `ai_service.py` 모듈의 `upload_and_index_format` 함수를 호출합니다. 이 함수는 포맷 정의를 저장하고 검색 가능하도록 색인하는 과정을 총괄합니다.
+
+    *   **Azure Blob Storage 저장**: `ai_service.py`는 `azure_storage_manager.upload_format_definition` 함수를 통해 포맷 정의 파일의 원본 내용(`format_content_str`)을 **Azure Blob Storage**의 `cdr-format-definitions` 컨테이너에 저장합니다. 이 단계는 포맷 정의의 영구적인 보관을 담당합니다.
+
+    *   **Azure AI Search 색인**: `ai_service.py`는 포맷 정의 JSON을 파싱하여 `format_type`, 그리고 `schema.header`에서 추출된 필드명들을 `field_names`로 준비합니다. 이 정보와 원본 내용 등을 포함하여 `azure_search_manager.upload_format_document` 함수를 호출합니다.
+        *   `azure_search_manager.py`는 이러한 정보를 바탕으로 **Azure AI Search**에 적합한 검색 문서를 생성(`id`, `format_name`, `format_type`, `format_content`, `field_names` 필드 포함)하고, **Azure AI Search** 인덱스에 업로드(색인)합니다. 이로써 이후 AI 기반 포맷 식별 단계에서 이 포맷 정의를 효율적으로 검색할 수 있게 됩니다.
+
+4.  **포맷 정의 등록 성공/실패 알림 (Streamlit UI)**:
+    *   모든 과정이 성공적으로 완료되면 Streamlit UI에 성공 메시지가 표시되고, 실패 시에는 오류 메시지와 함께 상세 로그 확인을 안내합니다.
+
+---
+
+## 4. CDR 파일 유효성 검증
+
+CDR 파일이 시스템에 업로드되면, 다음과 같은 두 가지 주요 단계로 구성된 플로우를 거쳐 유효성 검증 결과가 도출됩니다.
+
+### 4.1. 1단계: CDR 포맷 식별 (AI 기반)
+
+이 단계에서는 업로드된 CDR 파일의 포맷을 파악하고, 그에 해당하는 포맷 정의를 확보하는 과정입니다. **`data_parser.py`를 통한 Python 기반의 초기 구조 분석은 AI의 의사결정을 지원하는 중요한 기반을 마련합니다.**
+
+**[1단계 플로우 다이어그램 - CDR 포맷 식별]**
+```
+CDR 파일 업로드 (Streamlit UI)
+      │
+      V
+[Step 1.1] 업로드된 파일 내용 분석 (담당: `ai_service.py`, `data_parser.py`, `numpy`)
+      │    (파일 길이, 다양한 구분자 탐지, 주석/필드명 힌트 추출)
+      │
+      V
+[Step 1.2] Azure AI Search 초기 검색 (담당: `ai_service.py`, `azure_search_manager.py`)
+      │    (Python 분석 힌트 기반으로 저장된 포맷 정의 검색)
+      │
+      ├────► Search 결과가 있는가?
+      │             (아니오) ───► [Step 1.3a] AI 일반 유형 식별
+      │                                    (담당: `ai_service.py` -> Azure OpenAI Service -
+      │                                    LLM Fallback 1)
+      │                                    (LLM이 CDR 샘플로 'csv', 'fixed_length' 유형 식별)
+      │                                              │
+      │                                              └─► Azure AI Search 재시도
+      │                                                      (성공 시, `confidence` 0.7 부여)
+      │
+      │             (예) ───► [Step 1.3b] AI 포맷 검증
+      │                                    (담당: `ai_service.py` -> Azure OpenAI Service - LLM)
+      │                                    (LLM이 Search 결과 중 가장 적합한 포맷 확인,
+      │                                    LLM이 부여한 `confidence` 사용)
+      │
+      │                                    (앞선 모든 Search/AI 시도 실패)
+      V                                                          V
+포맷 식별 완료 (확정된 포맷 정의 및 신뢰도)                 [Step 1.3c] AI 포맷 추론
+      │                                                  (담당: `ai_service.py` -> Azure OpenAI Service -
+      │                                                  LLM Fallback 2)
+      │                                                  (LLM이 CDR 샘플만으로 새로운 포맷 정의 JSON 생성,
+      │                                                  `confidence` 0.6 부여)
+```
+
+
+**상세 플로우 설명:**
+
+1.  **Python 기반 초기 구조 분석 (`data_parser.py` 활용)**:
+    *   `ai_service.py` 내 `_analyze_cdr_sample_structure` 함수는 `data_parser.py` 및 `numpy`와 협력하여 CDR 파일의 순수 데이터 샘플 라인을 분석합니다.
+    *   라인 길이의 일관성 및 다양한 구분자(`,`, `;`, `\t`, `|` 등)별 필드 개수 일관성을 탐지하여 최적의 포맷 타입(csv/fixed_length), 구분자, 그리고 **Azure AI Search 쿼리와 Azure OpenAI Service의 LLM이 더 정확하고 효율적으로 판단할 수 있도록 메타 힌트를 생성**합니다.
+
+2.  **Azure AI Search를 통한 포맷 정의 검색 (`azure_search_manager.py` 연동)**:
+    *   `ai_service.py`는 Python 분석 힌트를 활용하여 `azure_search_manager.py` 모듈을 통해 **Azure AI Search**에 미리 색인된 CDR 포맷 정의를 검색합니다.
+
+3.  **AI의 지능형 Fallback 로직 및 신뢰도 결정 (feat. Azure OpenAI Service)**:
+    *   **Azure AI Search**가 포맷 정의를 찾지 못했거나, 추가 **AI (LLM)**의 지능적 판단이 필요할 때 `ai_service.py` 모듈이 **Azure OpenAI Service의 LLM**과 협력하여 포맷을 결정하고, 결정 방식에 따라 **신뢰도(Confidence)를 부여**합니다.
+    *   **LLM은 Python 기반의 초기 분석 결과(구분자, 필드 힌트 등)를 중요한 정보로 활용하여 포맷 식별 및 추론의 정확도를 높입니다.**
+    *   **가장 높은 신뢰도**: Search 결과가 있고, **LLM**이 이를 검증하여 `confidence`를 직접 부여한 경우 (`source: search_validated_by_llm`).
+    *   **중간 신뢰도**: Search 실패 후 **LLM**이 일반 유형 식별(e.g., CSV) → **Azure AI Search** 재시도 과정을 거친 경우, 시스템이 **`confidence` `0.7`**을 부여 (`llm_general_type_and_search`).
+    *   **낮은 신뢰도**: 앞선 모든 시도 실패 후 **LLM**이 CDR 샘플만으로 **새로운 포맷 정의를 추론**한 경우, 시스템이 **`confidence` `0.6`**을 부여 (`llm_inferred`).
+
+### 4.2. 2단계: 식별된 포맷 기반 CDR 데이터 검증
+
+포맷 식별 단계에서 확정된 포맷 정의를 사용하여 CDR 파일 내용의 유효성을 검증하고 문제점을 상세 보고하는 단계입니다. **이 단계에서 `data_parser.py`는 정형화된 데이터 처리 및 1차 검증을 수행함으로써 AI가 더 복잡한 판단에 집중할 수 있도록 지원하며 효율성을 극대화하는 핵심적인 역할을 합니다.**
+
+**[2단계 플로우 다이어그램 - CDR 데이터 검증]**
+```
+포맷 식별 완료 (확정된 포맷 정의 및 신뢰도)
+      │
+      V
+[Step 2.1] Python 파서 기반 1차 데이터 파싱
+      │    (담당: `ai_service.py` -> `data_parser.py` (CDRParser))
+      │    (식별된 포맷 정의에 따라 각 CDR 라인 파싱, 타입 변환 등)
+      │    (타입 변환 오류(`PARSE_ERROR`) 등 기본적인 검증 및 오류 정보를 LLM에 제공)
+      │
+      V
+[Step 2.2] AI 기반 최종 유효성 검증
+      │    (담당: `ai_service.py` -> Azure OpenAI Service LLM)
+      │    (LLM이 `data_parser.py`가 제공한 정형화된 파싱 결과 1차 참고)
+      │    (포맷 정의, Python 파싱 결과, 원본 CDR 라인 종합 비교하여 문제점 판별)
+      │    (문제점은 JSON 배열 형태로 구조화하여 반환)
+      │
+      V
+[Step 2.3] 검증 결과 보고 (Streamlit UI)
+           (발견된 문제점 목록, 특정 문제 레코드 상세 비교 테이블 등 시각화)
+```
+
+**상세 플로우 설명:**
+
+1.  **Python 파서 기반 1차 데이터 파싱 (`data_parser.py`의 핵심 역할)**:
+    *   `ai_service.py` 모듈은 `data_parser.py` 모듈의 `CDRParser`를 활용하여 확정된 포맷 정의에 따라 CDR 파일 각 라인을 **정형적으로 1차 파싱**합니다.
+    *   `data_parser.py`는 각 필드를 추출하고, 정의된 `type`(string, integer, float, datetime 등)으로 변환을 시도합니다. 이 과정에서 발생하는 **타입 변환 오류(`PARSE_ERROR`) 등을 직접 감지**하여 상세한 오류 정보를 생성합니다.
+    *   **이 단계는 LLM이 수행하기에는 반복적이고 정형화된 파싱 및 기본 검증 작업을 Python 로직이 효율적으로 처리함으로써, AI의 부담을 경감하고 AI가 더 고차원적인 유효성 검증에 집중할 수 있도록 지원합니다.**
+
+2.  **AI 기반 최종 유효성 검증 (feat. Azure OpenAI Service)**:
+    *   `ai_service.py` 모듈은 **Azure OpenAI Service의 LLM**에게 포맷 정의(JSON), **`data_parser.py`가 제공한 정교한 1차 파싱 결과**, 그리고 원본 CDR 샘플 라인을 전달합니다.
+    *   **LLM**은 `data_parser.py`가 제공한 정보를 기반으로, 포맷 정의에 명시된 규칙(예: 필드 개수 불일치, 필드 길이 불일치, `PARSE_ERROR` 이외의 논리적 오류)에 따라 CDR 파일 내의 데이터 문제점을 최종적으로 판단하고 JSON 배열 형태로 구조화하여 반환합니다.
+
+3.  **검증 결과 보고 (Streamlit UI)**:
+    *   최종적으로 `app.py`는 LLM이 반환한 문제점 목록을 기반으로 사용자에게 직관적인 검증 결과를 제공합니다. 문제점들은 목록으로 표시되며, 사용자가 특정 문제 레코드를 선택하면 원본 라인, **`data_parser.py`가 파싱한 필드별 상세 값**, 포맷 정의와의 비교 정보를 테이블 형태로 상세히 보여줍니다.
+
+### 4.3. 신뢰도 (Confidence) 측정 방식
+
+CDR 파일 포맷 식별 단계에서 최종적으로 결정된 포맷 정의에는 시스템이 부여하는 신뢰도(Confidence) 점수가 함께 제공됩니다. 이 신뢰도는 포맷이 어떤 방식으로 식별되었는지에 따라 결정됩니다.
+
+*   **가장 높은 신뢰도: AI 검증 (`source: search_validated_by_llm`)**
+    *   **결정 방식**: Azure AI Search에서 잠재적인 포맷 정의들을 검색한 후, **Azure OpenAI Service의 LLM**이 CDR 샘플과 검색된 포맷 정의들을 비교하여 가장 적합한 정의를 선택합니다.
+    *   **신뢰도**: **LLM이 직접 판단하여 부여한 `confidence` 값** (예: 0.95)을 사용합니다. 이는 AI의 지능과 Search의 데이터가 결합된 가장 이상적인 경우로 간주됩니다.
+
+*   **중간 신뢰도: AI 유형 식별 & Search 재시도 (`source: llm_general_type_and_search`)**
+    *   **결정 방식**: 초기 Azure AI Search에서 포맷 정의를 찾지 못했을 때, **Azure OpenAI Service의 LLM**이 CDR 샘플만으로 "csv", "fixed_length"와 같은 **일반적인 포맷 유형을 식별**합니다. 이 식별된 유형을 바탕으로 Azure AI Search를 재시도하여 포맷 정의를 찾습니다.
+    *   **신뢰도**: 시스템에서 **고정 `0.7`**을 부여합니다. 이는 AI의 유형 판단 후 Search 재검증을 거친 결과입니다.
+
+*   **낮은 신뢰도: AI 포맷 추론 (`source: llm_inferred`)**
+    *   **결정 방식**: 앞선 모든 Search 및 AI 유형 식별 시도에서 만족스러운 포맷 정의를 찾지 못했을 때, **Azure OpenAI Service의 LLM**이 CDR 샘플 내용만을 보고 **JSON 형태의 포맷 정의 자체를 추론하여 생성**합니다.
+    *   **신뢰도**: 시스템에서 **고정 `0.6`**을 부여합니다. 이는 순수 AI의 추론에 기반하므로, 추후 사용자 검토를 통해 보강될 필요가 있는 경우입니다.
+
+---
+
+## 5. 향후 확장 가능성
+
+*   다양한 CDR 파일 형식(XML, JSON 등) 지원: **Azure Logic Apps**나 **Azure Data Factory**와 연계하여 다양한 원본 데이터 형식 처리.
+*   규칙 기반 검증 강화: **Azure Functions**를 활용하여 복잡한 사용자 정의 검증 규칙 실행.
+*   성능 최적화: 대량 CDR 파일 처리를 위해 **Azure Batch** 또는 **Azure Databricks**를 활용한 분산 처리 도입.
+*   모니터링 및 알림: **Azure Monitor** 및 **Azure Event Grid**를 통합하여 실시간 대시보드 및 문제 발생 시 자동 알림(이메일, 메시징 서비스) 기능 추가.
+
+---
+
+## 6. 결론
+
+본 AI 기반 CDR 파일 유효성 검증 시스템은 **Azure AI 서비스(Azure OpenAI Service, Azure AI Search, Azure Blob Storage)의 효과적인 통합**과 **`data_parser.py`를 통한 Python 기반의 정교한 데이터 처리**를 통해 CDR 데이터 품질 관리의 효율성과 정확성을 크게 향상시킵니다. **Python 모듈들의 명확한 역할 분담과 Azure 서비스의 전략적 활용**은 어떠한 CDR 파일이든 최적의 방식으로 포맷을 식별하고 유효성을 검증하려 시도하며, 복잡한 통신 데이터 환경에서 데이터 무결성을 보장하는 핵심 도구로서 큰 가치를 제공합니다.
+
+**질의응답 (Q&A)**
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# CDR 파일 유효성 검증 시스템: 설계 및 동작 설명서
+
 
 ### 개요 (Overview)
 이 프로세스의 주된 목적은 사용자가 정의한 CDR 파일의 구조(필드명, 데이터 타입, 길이 등)를 JSON 형태로 저장하고, 이후 이 정의를 AI가 효율적으로 검색하여 실제 CDR 파일을 분석하고 유효성을 검증할 때 활용하는 것입니다. 이를 위해 Azure Blob Storage와 Azure AI Search가 사용되며, 각각 파일의 영구 저장과 검색 엔진 역할를 수행합니다.
