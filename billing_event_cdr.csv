@@ -1,0 +1,13 @@
+# billing_event_cdr.csv - 통신 요금 청구 이벤트 (구분자: 세미콜론 ';')
+# billing_event_id;subscriber_id;event_type;event_timestamp;charged_amount;currency;service_code
+BIL001;SUB10001;DATA_CHARGE;2025-10-28T09:00:00+09:00;500.0;KRW;101
+BIL002;SUB10002;VOICE_CALL;2025-10-28T10:15:30+09:00;120.5;KRW;102
+# 의도적 오류 (라인 4): event_timestamp 필드 포맷 오류 (시간 부분 누락)
+BIL003;SUB10003;SMS_SEND;2025-10-28;30.0;KRW;103
+# 의도적 오류 (라인 5): charged_amount 필드 타입 불일치 (float -> 문자열)
+BIL004;SUB10004;DATA_OVERUSE;2025-10-28T11:45:00+09:00;HIGH;KRW;101
+# 의도적 오류 (라인 6): 필드 개수 초과 (extra_field 추가)
+BIL005;SUB10005;MONTHLY_FEE;2025-10-28T12:00:00+09:00;10000.0;KRW;100;extra_field
+# 의도적 오류 (라인 7): service_code 필드 타입 불일치 (int -> 문자열)
+BIL006;SUB10006;VALUE_ADDED;2025-10-28T13:00:00+09:00;50.0;KRW;ABC
+BIL007;SUB10007;ROAMING;2025-10-28T14:00:00+09:00;2500.0;USD;104

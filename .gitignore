@@ -1,0 +1,12 @@
+# .gitignore
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+env/
+venv/
+/.streamlit/
+.vscode/
+*.log
+.DS_Store

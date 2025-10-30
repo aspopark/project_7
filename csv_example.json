@@ -1,0 +1,5 @@
+{
+    "delimiter": ",",
+    "header": ["call_id", "start_time", "duration", "caller_id"],
+    "types": {"call_id": "string", "start_time": "string", "duration": "int", "caller_id": "string"}
+}

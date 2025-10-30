@@ -1,0 +1,18 @@
+{
+    "format_name": "csv_format_billing_event.json",
+    "format_type": "csv",
+    "record_delimiter": "\\n",
+    "schema": {
+        "delimiter": ";",
+        "header": ["billing_event_id", "subscriber_id", "event_type", "event_timestamp", "charged_amount", "currency", "service_code"],
+        "types": {
+            "billing_event_id": "string",
+            "subscriber_id": "string",
+            "event_type": "string",
+            "event_timestamp": "datetime",
+            "charged_amount": "float",
+            "currency": "string",
+            "service_code": "int"
+        }
+    }
+}

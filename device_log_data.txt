@@ -1,0 +1,14 @@
+# device_log_data.txt - 통신 장비 로그 (고정 길이: 35자)
+# log_id(8)device_id(5)log_timestamp(14)status_code(3)severity(1)error_flag(4)
+LOG000010000120251028090000OK 0PASS
+LOG000020000220251028100000ERR1FAIL
+LOG000030000320251028110000OK 0PASS
+# 의도적 오류 (라인 5): 전체 레코드 길이 부족 (log_timestamp 끝이 잘림)
+LOG000040000420251028120000OK 0PA
+# 의도적 오류 (라인 6): device_id 필드 타입 불일치 (int -> 문자열), 전체 레코드 길이 초과
+LOG00005ABCDE20251028130000WRN1WARNTHIS_IS_TOO_LONG
+# 의도적 오류 (라인 7): status_code 필드 길이 부족 (OK01 -> OK0)
+LOG000060000620251028140000OK0ERRR
+# 의도적 오류 (라인 8): log_timestamp 포맷 오류 (년도 202 -> 2025)
+LOG000070000720251028150000OK 0PASS
+LOG000080000820251028160000INF1NFO

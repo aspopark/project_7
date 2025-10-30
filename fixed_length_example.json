@@ -1,0 +1,5 @@
+[
+    {"name": "call_id", "start": 0, "length": 10, "type": "string"},
+    {"name": "start_time", "start": 10, "length": 14, "type": "string"},
+    {"name": "duration", "start": 24, "length": 5, "type": "int"}
+]

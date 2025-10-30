@@ -1,0 +1,16 @@
+{
+    "format_name": "csv_format.json",
+    "format_type": "csv",
+    "record_delimiter": "\\n",
+    "schema": {
+        "delimiter": ",",
+        "header": ["call_id", "start_time", "duration", "caller_id", "data_volume"],
+        "types": {
+            "call_id": "string",
+            "start_time": "string",
+            "duration": "int",
+            "caller_id": "string",
+            "data_volume": "int"
+        }
+    }
+}

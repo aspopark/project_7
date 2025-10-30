@@ -1,0 +1,13 @@
+# transaction_data_type_error.txt - 금융 거래 기록 (고정 길이: 50자), 전체 길이 일치, 내부 필드 오류
+# trx_id(12)account_no(10)trx_date(8)trx_amount(10)currency_code(3)is_debit(1)branch_id(6)
+TRX000000001ACC0000001202510280000100000KRWTBNCB01
+TRX000000002ACC0000002202510280000050000USDFECB02
+# 의도적 오류 (라인 4): is_debit 필드 타입 불일치 (bool -> X). 전체 길이 50자.
+TRX000000003ACC0000003202510280000120000KRWXBCB03
+# 의도적 오류 (라인 5): trx_amount 필드 타입 불일치 (int -> 문자열 'NOAMOUNT'). 전체 길이 50자.
+TRX000000004ACC000000420251028NOAMOUNTKRWTBNCB04
+# 의도적 오류 (라인 6): trx_id 필드 길이 불일치 (정의 12자 -> 실제 15자).
+TRX000000005ABCDE000000000202510280000030000KRWTBNCB05
+# 의도적 오류 (라인 7): trx_date 필드 포맷 오류 ('2025/10/28', type은 string이지만 정해진 YYYYMMDD 형식이 아닐 수 있음)
+TRX000000006ACC00000062025/10/280000020000KRWFBNCB06
+TRX000000007ACC0000007202510280000075000JPYTBNCB07

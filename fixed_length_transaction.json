@@ -1,0 +1,15 @@
+{
+    "format_name": "fixed_length_transaction.json",
+    "format_type": "fixed_length",
+    "record_delimiter": "\\n",
+    "record_length": 50,
+    "fields": [
+        {"name": "trx_id", "start": 0, "length": 12, "type": "string"},
+        {"name": "account_no", "start": 12, "length": 10, "type": "string"},
+        {"name": "trx_date", "start": 22, "length": 8, "type": "string"},
+        {"name": "trx_amount", "start": 30, "length": 10, "type": "int"},
+        {"name": "currency_code", "start": 40, "length": 3, "type": "string"},
+        {"name": "is_debit", "start": 43, "length": 1, "type": "bool"},
+        {"name": "branch_id", "start": 44, "length": 6, "type": "string"}
+    ]
+}

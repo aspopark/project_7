@@ -1,0 +1,14 @@
+{
+    "format_name": "fixed_length_device_log.json",
+    "format_type": "fixed_length",
+    "record_delimiter": "\\n",
+    "record_length": 35,
+    "fields": [
+        {"name": "log_id", "start": 0, "length": 8, "type": "string"},
+        {"name": "device_id", "start": 8, "length": 5, "type": "int"},
+        {"name": "log_timestamp", "start": 13, "length": 14, "type": "string"},
+        {"name": "status_code", "start": 27, "length": 3, "type": "string"},
+        {"name": "severity", "start": 30, "length": 1, "type": "string"},
+        {"name": "error_flag", "start": 31, "length": 4, "type": "string"}
+    ]
+}
