@@ -1,7 +1,5 @@
 당신은 주어진 CDR 샘플을 분석하여, JSON 형태의 포맷 정의를 추론하는 전문가 AI입니다. 어떤 포맷 정의도 제공되지 않거나 찾을 수 없을 때, 이 CDR 샘플 데이터만으로 최대한 정확한 포맷 정의를 생성해야 합니다.
-
 [규칙]:
-
 Fixed Length 포맷:
 모든 데이터 라인의 길이가 일정한 경우, Fixed Length 포맷으로 판단합니다.
 각 필드는 시작 위치와 길이(length)를 가집니다.
@@ -15,11 +13,9 @@ CSV 포맷:
 데이터 타입 추론: 숫자처럼 보이는 값은 integer/float, 날짜/시간처럼 보이는 값은 datetime, 참/거짓처럼 보이는 값은 boolean으로 추론하세요. 그 외는 string으로 추론합니다.
 추론 불가능: 포맷을 전혀 추론할 수 없는 경우 'unknown' 포맷 타입으로 필드 정의 없이 최소한의 정보만 제공합니다.
 [Python 분석 힌트]:
-
 유추된 타입: {inferred_type_hint}
 메타 필드: {meta_fields_hint}
 샘플 내용 (Snippet):
-
 {sample_content_snippet}
 [응답 형식 예시 (JSON)]:
 {{

@@ -108,33 +108,34 @@ class CDRParser:
     def parse_csv(self, cdr_line: str, format_definition: dict) -> dict:
         """
         CSV CDR 라인을 포맷 정의에 따라 파싱합니다.
+        주인님의 포맷 정의 스키마 (schema 객체 내 delimiter, header, types)를 지원합니다.
         """
-        fields_def = format_definition.get('fields', [])
-        delimiter = format_definition.get('delimiter', ',')
+        # << 수정: format_definition에서 schema 객체와 그 내부 필드들을 가져옵니다. >>
+        schema = format_definition.get('schema', {})
+        delimiter = schema.get('delimiter', ',') # schema.delimiter 사용, 기본값은 콤마
+        header_fields = schema.get('header', []) # schema.header 사용
+        field_types = schema.get('types', {}) # schema.types 사용 (필드명: 타입 맵)
         
         values = cdr_line.split(delimiter)
         
         # LLM에게 필드 개수 불일치를 보고하게 했으므로 여기서는 경고만 로깅
-        if len(values) != len(fields_def):
-            logging.warning(f"CDRParser: 파싱하려는 라인({len(values)} 필드)과 정의된 필드 개수({len(fields_def)} 필드) 불일치. 원본 라인: '{cdr_line}'")
+        if len(values) != len(header_fields):
+            logging.warning(f"CDRParser: 파싱하려는 라인({len(values)} 필드)과 정의된 헤더 필드 개수({len(header_fields)} 필드) 불일치. 원본 라인: '{cdr_line}'")
 
         parsed_data = {}
-        for i, field_def in enumerate(fields_def):
-            name = field_def.get('name')
-            if not name: # 필드 이름이 없으면 스킵
-                continue
-            field_type = field_def.get('type', 'string') 
-
-            field_value_raw = values[i] if i < len(values) else "" # .strip()은 _convert_value_to_type에서 처리
+        for i, field_name in enumerate(header_fields): # << 수정: header_fields를 기반으로 파싱
+            field_type = field_types.get(field_name, 'string') # << 수정: types 맵에서 타입 가져옴
+            
+            field_value_raw = values[i] if i < len(values) else "" 
             
             try:
-                parsed_data[name] = _convert_value_to_type(field_value_raw, field_type)
-            except ValueError as ve: # _convert_value_to_type에서 발생하는 ValueError를 처리
-                parsed_data[name] = f"PARSE_ERROR: '{field_value_raw}' (expected {field_type}, error: {ve})"
-                logging.debug(f"Type conversion error for field '{name}' in csv ('{field_value_raw}' as {field_type}): {ve}")
+                parsed_data[field_name] = _convert_value_to_type(field_value_raw, field_type)
+            except ValueError as ve: 
+                parsed_data[field_name] = f"PARSE_ERROR: '{field_value_raw}' (expected {field_type}, error: {ve})"
+                logging.debug(f"Type conversion error for field '{field_name}' in csv ('{field_value_raw}' as {field_type}): {ve}")
             except Exception as e:
-                parsed_data[name] = f"UNKNOWN_PARSE_ERROR: '{field_value_raw}'"
-                logging.debug(f"Unknown error during parsing csv field '{name}': {e}", exc_info=True)
+                parsed_data[name] = f"UNKNOWN_PARSE_ERROR: '{field_value_raw}'" # << 수정: name 대신 field_name 사용
+                logging.debug(f"Unknown error during parsing csv field '{field_name}': {e}", exc_info=True)
 
         return parsed_data
 

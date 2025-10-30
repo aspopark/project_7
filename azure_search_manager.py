@@ -13,7 +13,7 @@ from azure.core.credentials import AzureKeyCredential
 from config import AZURE_SEARCH_ENDPOINT, AZURE_SEARCH_API_KEY, AZURE_SEARCH_INDEX_NAME
 import logging
 import json
-# import numpy as np # CDR 샘플 분석 로직이 제거되므로 numpy는 더 이상 필요 없습니다.
+# import numpy as np # 이제 _analyze_cdr_sample_structure 함수에서만 사용되므로 여기에선 불필요.
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -57,7 +57,10 @@ class AzureSearchManager:
             raise
 
     def upload_format_document(self, file_name_from_upload: str, content_from_upload: str) -> bool:
-        """포맷 정의를 Azure AI Search 인덱스에 문서로 업로드(색인)합니다."""
+        """
+        포맷 정의를 Azure AI Search 인덱스에 문서로 업로드(색인)합니다.
+        주인님의 새로운 스키마를 지원하도록 field_names 추출 로직을 수정합니다.
+        """
         inferred_format_type = "unknown"
         actual_format_name = file_name_from_upload 
         
@@ -67,9 +70,11 @@ class AzureSearchManager:
             if format_obj.get("format_name"):
                 actual_format_name = format_obj["format_name"]
 
-            # ai_service.py의 upload_and_index_format에서 이미 field_names를 계산하여 전달하도록 수정했었으니
-            # 여기서는 format_obj에서 직접 field_names를 추출하여 인덱스에 포함합니다.
-            field_names = [f.get("name") for f in format_obj.get("fields", []) if f.get("name")]
+            # << 수정: 인덱싱 시 사용될 필드명 추출 로직 (schema.header 사용) >>
+            field_names = []
+            if format_obj.get("schema") and format_obj["schema"].get("header"):
+                field_names = format_obj["schema"]["header"] # schema.header 리스트에서 필드명 추출
+            
             field_names_str = " ".join(field_names)
 
         except json.JSONDecodeError:

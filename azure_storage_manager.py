@@ -2,7 +2,7 @@
 from azure.storage.blob import BlobServiceClient
 from config import AZURE_STORAGE_CONNECTION_STRING, AZURE_STORAGE_CONTAINER_NAME, AZURE_STORAGE_CDR_CONTAINER_NAME
 import logging
-from azure.core.exceptions import ResourceExistsError
+from azure.core.exceptions import ResourceExistsError # << 수정: ResourceExistsError 임포트 추가
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -18,7 +18,7 @@ class AzureStorageManager:
             # 컨테이너가 존재하지 않으면 생성
             self._create_containers_if_not_exist()
         except Exception as e:
-            logging.error(f"Azure Storage 연결 오류: {e}", exc_info=True) # << exc_info=True 추가
+            logging.error(f"Azure Storage 연결 오류: {e}", exc_info=True) # << 수정: exc_info=True 추가
             raise # 초기화 실패 시 애플리케이션 시작을 중단합니다.
 
     def _create_containers_if_not_exist(self):
@@ -30,10 +30,10 @@ class AzureStorageManager:
             try:
                 client.create_container()
                 logging.info(f"컨테이너 '{container_name}'가 생성되었습니다.")
-            except ResourceExistsError: # << ResourceExistsError 예외를 직접 잡습니다.
+            except ResourceExistsError: # << 수정: ResourceExistsError 예외를 직접 잡음
                 logging.info(f"컨테이너 '{container_name}'가 이미 존재합니다. 스킵합니다.")
             except Exception as e:
-                logging.error(f"컨테이너 '{container_name}' 생성 오류: {e}", exc_info=True)
+                logging.error(f"컨테이너 '{container_name}' 생성 오류: {e}", exc_info=True) # << 수정: exc_info=True 추가
 
     def upload_file(self, file_content: str, blob_name: str, container_client) -> bool:
         """지정된 컨테이너에 파일을 업로드합니다."""
@@ -43,7 +43,7 @@ class AzureStorageManager:
             logging.info(f"'{blob_name}' 파일을 Azure Blob Storage에 성공적으로 업로드했습니다.")
             return True
         except Exception as e:
-            logging.error(f"'{blob_name}' 파일 업로드 오류: {e}", exc_info=True) # << exc_info=True 추가
+            logging.error(f"'{blob_name}' 파일 업로드 오류: {e}", exc_info=True) # << 수정: exc_info=True 추가
             return False
 
     def download_file(self, blob_name: str, container_client) -> str | None:
@@ -54,7 +54,7 @@ class AzureStorageManager:
             logging.info(f"'{blob_name}' 파일을 Azure Blob Storage에서 성공적으로 다운로드했습니다.")
             return download_stream.readall().decode('utf-8')
         except Exception as e:
-            logging.error(f"'{blob_name}' 파일 다운로드 오류: {e}", exc_info=True) # << exc_info=True 추가
+            logging.error(f"'{blob_name}' 파일 다운로드 오류: {e}", exc_info=True) # << 수정: exc_info=True 추가
             return None
     
     def list_definitions(self) -> list[str]:
@@ -63,7 +63,7 @@ class AzureStorageManager:
             blob_list = self.definitions_container_client.list_blobs()
             return [blob.name for blob in blob_list]
         except Exception as e:
-            logging.error(f"정의 파일 목록 가져오기 오류: {e}", exc_info=True) # << exc_info=True 추가
+            logging.error(f"정의 파일 목록 가져오기 오류: {e}", exc_info=True) # << 수정: exc_info=True 추가
             return []
 
     def upload_format_definition(self, file_name: str, content: str) -> bool:

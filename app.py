@@ -161,6 +161,7 @@ if cdr_content and identified_format_name is None and validation_issues is None:
         st.session_state['identified_format_reason'] = None
 
         with st.spinner("AI가 CDR 파일 형식을 식별 중입니다..."):
+            # << 수정: identify_cdr_format 호출 시 cdr_file_name 인자 전달 제거 >>
             identified_format_data: Dict[str, Any] = ai_service.identify_cdr_format(cdr_content) 
             
             # session_state에 식별된 정보 저장
@@ -229,8 +230,6 @@ if validation_issues is not None:
             selected_issue = validation_issues[selected_issue_index]
             
             line_number_to_show_for_content = selected_issue.get('line')
-            # extract_problem_info_from_llm_message 함수는 이제 제거되었으므로 직접 사용하지 않습니다.
-            # LLM이 JSON으로 반환했으므로, selected_issue['field']에 이미 필드명이 있습니다.
             problem_field_name_from_json = selected_issue.get('field') 
             
             st.subheader(f"⚠️ 문제 CDR 레코드 상세 정보 (원본 파일 라인 {line_number_to_show_for_content})")
@@ -253,17 +252,21 @@ if validation_issues is not None:
                     if "error" in parsed_line_data:
                         st.warning(f"데이터 파싱 중 오류 발생: {parsed_line_data['error']}")
                     else:
-                        fields_def = format_def_obj_for_parser.get('fields', [])
+                        # << 수정: 필드 정의를 format_def_obj_for_parser.get('schema', {}).get('header', [])에서 가져옴 >>
+                        header_fields_def = format_def_obj_for_parser.get('schema', {}).get('header', [])
+                        field_types_def = format_def_obj_for_parser.get('schema', {}).get('types', {})
                         
                         st.json(parsed_line_data, expanded=False) # 파싱된 전체 데이터도 보여줄 수 있습니다.
 
                         st.markdown("##### 포맷 정의 vs. 파싱된 데이터:")
                         
-                        table_data_rows = [] # 2D 리스트로 변경
+                        table_data_rows = [] 
                         # 헤더 추가
                         if format_def_obj_for_parser.get('format_type') == 'fixed_length':
                             table_data_rows.append(["필드명", "정의된 길이", "정의된 타입", "파싱된 값", "파싱된 값 길이", "오류 여부"])
-                            for field_def in fields_def:
+                            # Fixed Length는 fields 리스트가 직접 정의될 것이므로, header_fields_def 대신 fields_def를 사용
+                            fields_def_fixed_length = format_def_obj_for_parser.get('fields', [])
+                            for field_def in fields_def_fixed_length:
                                 field_name = field_def.get('name')
                                 defined_length = field_def.get('length')
                                 defined_type = field_def.get('type', 'string')
@@ -272,9 +275,12 @@ if validation_issues is not None:
                                 parsed_value_str = str(parsed_value) if parsed_value is not None else ""
                                 parsed_value_length = len(parsed_value_str)
                                 
-                                error_status = "❌" if (field_name == problem_field_name_from_json and selected_issue.get('issue_type') != 'LENGTH_MISMATCH') or "PARSE_ERROR" in parsed_value_str else "✅"
-                                if selected_issue.get('issue_type') == 'LENGTH_MISMATCH' and defined_length != parsed_value_length and parsed_value_str:
-                                    error_status = "❌" # 길이 불일치는 별도로 체크하여 표시
+                                # 필드명이 일치하거나 PARSE_ERROR가 있으면 X
+                                error_status = "❌" if (field_name == problem_field_name_from_json and selected_issue.get('issue_type') != 'LENGTH_MISMATCH') or ("PARSE_ERROR" in parsed_value_str) else "✅"
+                                
+                                # 길이 불일치 타입에 대해서는 별도로 판단 (전체 라인 길이 문제일 수도 있으므로 필드 명칭만으로 부족)
+                                if selected_issue.get('issue_type') == 'LENGTH_MISMATCH' and defined_length is not None and parsed_value_length != defined_length and field_name == problem_field_name_from_json:
+                                    error_status = "❌" # 길이 불일치도 체크하여 표시
                                 
                                 table_data_rows.append([
                                     field_name, 
@@ -286,9 +292,8 @@ if validation_issues is not None:
                                 ])
                         elif format_def_obj_for_parser.get('format_type') == 'csv':
                             table_data_rows.append(["필드명", "정의된 타입", "파싱된 값", "오류 여부"])
-                            for field_def in fields_def:
-                                field_name = field_def.get('name')
-                                defined_type = field_def.get('type', 'string')
+                            for field_name in header_fields_def: # csv_format에서는 header_fields_def 사용
+                                defined_type = field_types_def.get(field_name, 'string')
                                 parsed_value = parsed_line_data.get(field_name)
                                 parsed_value_str = str(parsed_value) if parsed_value is not None else ""
                                 error_status = "❌" if field_name == problem_field_name_from_json or "PARSE_ERROR" in parsed_value_str else "✅"
@@ -302,7 +307,6 @@ if validation_issues is not None:
                             st.warning("알 수 없는 포맷 타입이므로 필드 상세 정보를 표시할 수 없습니다.")
                         
                         if table_data_rows:
-                            # Streamlit table은 리스트 오브 리스트를 기대합니다.
                             st.table(table_data_rows) 
 
                 else:
