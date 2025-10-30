@@ -95,8 +95,7 @@ CDR 파일 업로드 (Streamlit UI)
       │
       ├────► Search 결과가 있는가?
       │             (아니오) ───► [Step 1.3a] AI 일반 유형 식별
-      │                                    (담당: `ai_service.py` -> Azure OpenAI Service -
-      │                                    LLM Fallback 1)
+      │                                    (담당: `ai_service.py` -> Azure OpenAI Service - LLM Fallback 1)
       │                                    (LLM이 CDR 샘플로 'csv', 'fixed_length' 유형 식별)
       │                                              │
       │                                              └─► Azure AI Search 재시도
@@ -110,10 +109,10 @@ CDR 파일 업로드 (Streamlit UI)
       │                                    (앞선 모든 Search/AI 시도 실패)
       V                                                          V
 포맷 식별 완료 (확정된 포맷 정의 및 신뢰도)                 [Step 1.3c] AI 포맷 추론
-      │                                                  (담당: `ai_service.py` -> Azure OpenAI Service -
-      │                                                  LLM Fallback 2)
-      │                                                  (LLM이 CDR 샘플만으로 새로운 포맷 정의 JSON 생성,
-      │                                                  `confidence` 0.6 부여)
+                                                       (담당: `ai_service.py` -> Azure OpenAI Service -
+                                                       LLM Fallback 2)
+                                                       (LLM이 CDR 샘플만으로 새로운 포맷 정의 JSON 생성,
+                                                       `confidence` 0.6 부여)
 ```
 
 
