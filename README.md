@@ -101,9 +101,12 @@ CDR 파일 업로드 (Streamlit UI)
       │                                              └─► Azure AI Search 재시도
       │                                                      (성공 시, `confidence` 0.7 부여)
       │
-      │             (예) ───► [Step 1.3b] AI 포맷 검증
+      │             (예) ───► Search 결과 (포맷 후보 목록) 반환
+      │                           │
+      │                           V
+      │                         [Step 1.3b] AI 포맷 최종 선정 및 검증
       │                                    (담당: `ai_service.py` -> Azure OpenAI Service - LLM)
-      │                                    (LLM이 Search 결과 중 가장 적합한 포맷 확인,
+      │                                    (LLM이 Search 결과 후보 중 가장 적합한 포맷을 선택/확정,
       │                                    LLM이 부여한 `confidence` 사용)
       │
       │                                    (앞선 모든 Search/AI 시도 실패)
