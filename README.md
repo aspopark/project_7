@@ -3,7 +3,7 @@ MS AI과정 7기
 
 
 
-![접속링크](https://ktds-pjs-webapp.azurewebsites.net/)
+[접속링크](https://ktds-pjs-webapp.azurewebsites.net/)
 
 
 # CDR 파일 연동 데이터 품질 모니터링 및 이상 탐지 
